@@ -9,7 +9,18 @@ let addUserIntoDb = (data) => {
         name: data.name,
         password: data.password,
         createdTime: Date(),
+        mobile: data.mobile,
+        email: data.email,
+        deviceToken: data.deviceToken,
+        userImage: data.userImage,
+        address: data.address,
+        userLocation: data.userLocation,
+        gender: data.gender,
+        profession: data.profession,
         userType: data.userType,
+        is_active: true,
+        is_online: true,
+        is_verified: true,
         updatedTime: Date(),
       })
       .then((result) => {
@@ -120,7 +131,7 @@ let getUserByIdAndPassword = (data) => {
   const db = getDb();
   return new Promise((resolve, reject) => {
     db.collection("users")
-      .find({ name: data.name, password: data.password })
+      .find({ email: data.email, password: data.password })
       .next()
       .then((result) => {
         if (result) {
