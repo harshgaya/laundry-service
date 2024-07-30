@@ -1,5 +1,73 @@
 const getDb = require("../dbConfig/dbConnection").getDb;
 const mongodb = require("mongodb");
+
+let createNewCollection = (data) => {
+  const db = getDb();
+  return new Promise((resolve, reject) => {
+    db.collection("collectionOrBatch")
+      .find()
+      .sort({ collectionNo: -1 })
+      .limit(1)
+      .toArray()
+      .then((result) => {
+        let lastCollectionNo = 0;
+
+        if (result.length != 0) {
+          lastCollectionNo = result[0].collectionNo;
+          db.collection("collectionOrBatch")
+            .insertOne({
+              collectionNo: lastCollectionNo + 1,
+              collegeName: data.collegeName,
+              collegeId: data.collegeId,
+              createdBy: data.createdBy,
+              createdTime: new Date(),
+              updatedTime: new Date(),
+            })
+            .then((result) => {
+              (data.collectionNo = lastCollectionNo + 1),
+                resolve({
+                  status: 200,
+                  message: "collection number added in db",
+                  data: data,
+                });
+            })
+            .catch((error) => {
+              reject({
+                status: 500,
+                message: error,
+                data: [],
+              });
+            });
+        } else {
+          (data.collectionNo = lastCollectionNo + 1),
+            db
+              .collection("collectionOrBatch")
+              .insertOne({
+                collectionNo: lastCollectionNo + 1,
+                collegeName: data.collegeName,
+                collegeId: data.collegeId,
+                createdBy: data.createdBy,
+                createdTime: new Date(),
+                updatedTime: new Date(),
+              })
+              .then((result) => {
+                resolve({
+                  status: 200,
+                  message: "collection no added in db",
+                  data: data,
+                });
+              })
+              .catch((error) => {
+                reject({
+                  status: 500,
+                  message: error,
+                  data: [],
+                });
+              });
+        }
+      });
+  });
+};
 let addOrdersToDb = (data) => {
   const db = getDb();
   return new Promise((resolve, reject) => {
@@ -21,6 +89,7 @@ let addOrdersToDb = (data) => {
           data.isActive = true;
           data.createdTime = new Date();
           data.updatedTime = new Date();
+          data.createdBy = data.createdBy;
           (data.campuseEmployeeId1 = null),
             (data.driverId1 = null),
             (data.washingSupervisorId = null),
@@ -62,6 +131,21 @@ let addOrdersToDb = (data) => {
 
 module.exports = {
   //addOrdersToDb
+  //createNewCollection
+  createNewCollection: (data) =>
+    new Promise((resolve, reject) => {
+      return createNewCollection(data)
+        .then((result) => {
+          if (result && result.status == 200) {
+            resolve(result);
+          } else {
+            reject(result);
+          }
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    }),
   addOrdersToDb: (data) =>
     new Promise((resolve, reject) => {
       return addOrdersToDb(data)

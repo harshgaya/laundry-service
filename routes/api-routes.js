@@ -26,3 +26,4 @@ router.get(
 );
 ///orders
 router.post("/addOrdersToDb", orderController.addOrdersToDb);
+router.post("/createNewCollection", orderController.createNewCollection);
