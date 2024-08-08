@@ -4,7 +4,7 @@ const mongodb = require("mongodb");
 let createNewCollection = (data) => {
   const db = getDb();
   return new Promise((resolve, reject) => {
-    db.collection("collectionOrBatch")
+    db.collection("collections")
       .find()
       .sort({ collectionNo: -1 })
       .limit(1)
@@ -14,12 +14,12 @@ let createNewCollection = (data) => {
 
         if (result.length != 0) {
           lastCollectionNo = result[0].collectionNo;
-          db.collection("collectionOrBatch")
+          db.collection("collections")
             .insertOne({
               collectionNo: lastCollectionNo + 1,
               collegeName: data.collegeName,
-              collegeId: data.collegeId,
-              createdBy: data.createdBy,
+              campusId: new mongodb.ObjectId(data.campusId),
+              createdBy: new mongodb.ObjectId(data.createdBy),
               createdTime: new Date(),
               updatedTime: new Date(),
             })
@@ -28,7 +28,7 @@ let createNewCollection = (data) => {
                 resolve({
                   status: 200,
                   message: "collection number added in db",
-                  data: data,
+                  data: [data],
                 });
             })
             .catch((error) => {
@@ -41,12 +41,12 @@ let createNewCollection = (data) => {
         } else {
           (data.collectionNo = lastCollectionNo + 1),
             db
-              .collection("collectionOrBatch")
+              .collection("collection")
               .insertOne({
                 collectionNo: lastCollectionNo + 1,
                 collegeName: data.collegeName,
-                collegeId: data.collegeId,
-                createdBy: data.createdBy,
+                createdBy: new mongodb.ObjectId(data.createdBy),
+                campusId: new mongodb.ObjectId(data.campusId),
                 createdTime: new Date(),
                 updatedTime: new Date(),
               })
@@ -54,7 +54,7 @@ let createNewCollection = (data) => {
                 resolve({
                   status: 200,
                   message: "collection no added in db",
-                  data: data,
+                  data: [data],
                 });
               })
               .catch((error) => {

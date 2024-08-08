@@ -29,49 +29,65 @@ let addStudentToDb = (data) => {
   const db = getDb();
   return new Promise((resolve, reject) => {
     db.collection("students")
-      .find({ tagNumber: data.tagNumber })
-      .next()
+      .find({ campusId: new mongodb.ObjectId(data.campusId) })
+      .sort({ tagNumber: -1 })
+      .limit(1)
+      .toArray()
       .then((result) => {
-        if (result) {
-          resolve({
-            status: 400,
-            message: "student already exists",
-            data: data,
-          });
-        } else {
+        let lastTagNumber = 0;
+        if (result.length != 0) {
+          lastTagNumber = result[0].tagNumber;
           db.collection("students")
-            .insertOne({
-              name: data.name,
-              college: data.college,
+            .find({
               tagNumber: data.tagNumber,
-              rollNumber: data.rollNumber,
-              collegeId: data.collegeId,
-              mobile: data.mobile,
-              email: data.email,
-              dob: data.dob,
-              collegeYear: data.collegeYear,
-              branch: data.branch,
-              address: data.address,
-              isActive: true,
-              adharNumber: data.adharNumber,
-              createdTime: Date(),
-              updatedTime: Date(),
-              deviceToken: data.deviceToken,
+              campusId: new mongodb.ObjectId(data.campusId),
             })
+            .next()
             .then((result) => {
-              resolve({
-                status: 200,
-                message: "student added in db",
-                data: data,
-              });
-            })
-            .catch((error) => {
-              reject({
-                status: 500,
-                message: error,
-                data: [],
-              });
+              if (result) {
+                resolve({
+                  status: 400,
+                  message: "student already exists",
+                  data: data,
+                });
+              } else {
+                db.collection("students")
+                  .insertOne({
+                    name: data.name,
+                    collegeName: data.collegeName,
+                    tagNumber: data.tagNumber,
+                    rollNumber: data.rollNumber,
+                    campusId: new mongodb.ObjectId(data.campusId),
+                    mobile: data.mobile,
+                    email: data.email,
+                    dob: data.dob,
+                    collegeYear: data.collegeYear,
+                    branch: data.branch,
+                    address: data.address,
+                    isActive: true,
+                    adharNumber: data.adharNumber,
+                    createdTime: new Date(),
+                    updatedTime: new Date(),
+                    deviceToken: data.deviceToken,
+                  })
+                  .then((result) => {
+                    resolve({
+                      status: 200,
+                      message: "student added in db",
+                      data: data,
+                    });
+                  })
+                  .catch((error) => {
+                    reject({
+                      status: 500,
+                      message: error,
+                      data: [],
+                    });
+                  });
+              }
             });
+        } else {
+          lastTagNumber = lastTagNumber + 1;
         }
       });
   });
@@ -79,26 +95,31 @@ let addStudentToDb = (data) => {
 let addCollegeToDb = (data) => {
   const db = getDb();
   return new Promise((resolve, reject) => {
-    db.collection("colleges")
+    db.collection("campus")
       .find({ name: data.name })
       .next()
       .then((result) => {
         if (result) {
           resolve({
             status: 400,
-            message: "college already exists",
+            message: "campus already exists",
             data: data,
           });
         } else {
-          db.collection("colleges")
+          db.collection("campus")
             .insertOne({
               name: data.name,
+              college: data.college,
+              campusId: data.name
+                .split(" ")
+                .map((word) => word[0])
+                .join(""),
               location: data.location,
               address: data.address,
               collegeSupervisorId: data.collegeSupervisorId,
               isActive: true,
-              createdTime: Date(),
-              updatedTime: Date(),
+              createdTime: new Date(),
+              updatedTime: new Date(),
             })
             .then((result) => {
               resolve({
@@ -122,7 +143,7 @@ let addCollegeToDb = (data) => {
 let addUserIntoDb = (data) => {
   const db = getDb();
   return new Promise((resolve, reject) => {
-    db.collection("users")
+    db.collection("employee")
       .find({ email: data.email })
       .next()
       .then((result) => {
@@ -133,11 +154,11 @@ let addUserIntoDb = (data) => {
             data: data,
           });
         } else {
-          db.collection("users")
+          db.collection("employee")
             .insertOne({
               name: data.name,
               password: data.password,
-              createdTime: Date(),
+              createdTime: new Date(),
               mobile: data.mobile,
               email: data.email,
               deviceToken: data.deviceToken,
@@ -151,7 +172,9 @@ let addUserIntoDb = (data) => {
               isOnline: true,
               isVerified: true,
               adharNumber: data.adharNumber,
-              updatedTime: Date(),
+              updatedTime: new Date(),
+              collegeName: data.college ?? "",
+              campusId: new mongodb.ObjectId(data.campusId),
             })
             .then((result) => {
               resolve({
@@ -174,7 +197,7 @@ let addUserIntoDb = (data) => {
 let getUsers = () => {
   const db = getDb();
   return new Promise((resolve, reject) => {
-    db.collection("users")
+    db.collection("employee")
       .find()
       .sort({ createdTime: 1 })
       .toArray()
@@ -262,16 +285,32 @@ let updateUser = (id, updateData) => {
 let getUserByIdAndPassword = (data) => {
   const db = getDb();
   return new Promise((resolve, reject) => {
-    db.collection("users")
+    db.collection("employee")
       .find({ email: data.email, password: data.password })
       .next()
       .then((result) => {
         if (result) {
-          resolve({
-            status: 200,
-            message: "User can login",
-            data: [result],
-          });
+          db.collection("employeeAttendance")
+            .insertOne({
+              name: result.name,
+              isLogin: true,
+              createdTime: new Date(),
+              employeeId: result._id,
+            })
+            .then((result1) => {
+              result.loginTime = new Intl.DateTimeFormat("en-IN", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              }).format(new Date());
+              resolve({
+                status: 200,
+                message: "User can login",
+                data: [result],
+              });
+            });
         } else {
           resolve({
             status: 200,
@@ -289,10 +328,50 @@ let getUserByIdAndPassword = (data) => {
       });
   });
 };
+let employeeLogout = (data) => {
+  const db = getDb();
+  return new Promise((resolve, reject) => {
+    db.collection("employeeAttendance")
+      .insertOne({
+        name: data.name,
+        isLogin: false,
+        createdTime: new Date(),
+        employeeId: new mongodb.ObjectId(data.employeeId),
+      })
+      .then((result) => {
+        resolve({
+          status: 200,
+          message: "logout done!",
+          data: [result],
+        });
+      })
+      .catch((error) => {
+        reject({
+          status: 500,
+          message: error,
+          data: [],
+        });
+      });
+  });
+};
 module.exports = {
   //addCollegeToDb
   //getStudentByTagNumber
-
+  //employeeLogout
+  employeeLogout: (data) =>
+    new Promise((resolve, reject) => {
+      return employeeLogout(data)
+        .then((result) => {
+          if (result && result.status == 200) {
+            resolve(result);
+          } else {
+            reject(result);
+          }
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    }),
   getStudentByTagNumber: (tagNumber) =>
     new Promise((resolve, reject) => {
       return getStudentByTagNumber(tagNumber)
